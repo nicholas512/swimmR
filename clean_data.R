@@ -18,9 +18,10 @@ there is a significant rainfall event.
 "
 library(openxlsx)
 library(reshape2)
-options(stringsAsFactors = FALSE)
+library(here)
 
-datafile <- "M:\\src\\water\\shealthhealth-protection-divisionenvironmental-healthrecreational-waterbeaches2019-beachesresul.xlsx"
+
+datafile <- here('data',"shealthhealth-protection-divisionenvironmental-healthrecreational-waterbeaches2019-beachesresul.xlsx")
 
 # read in and reformat
 w19 <- read.xlsx(datafile, sheet=1)
@@ -60,24 +61,9 @@ df$status[df$status == 'nsa'] <- 'no swim'
 df$ecoli[df$ecoli=="Not Open"] <- NA
 df$ecoli <- as.numeric(df$ecoli)
 
+# day-of year
+df$DOY <- format(df$date, format="%m-%d")
+df$DOY <- as.Date(df$DOY, "%m-%d")
 
-#=============================================================================
-#= Analysis
-#===========
+write.csv(df, here('data','cleaned_data.csv'), row.names = FALSE)
 
-# histograms
-dev.new()
-par(mfrow=c(2,2))
-hist(log10(df$ecoli[df$beach=='BRT']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='WBO']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='MNY']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='PRB']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-
-# basic stats
-by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T)
-by(data = df$ecoli, INDICES = df$beach, FUN = mean, na.rm=T)
-by(data = df$ecoli, INDICES = df$beach, FUN = sd, na.rm=T)
-
-# when is single value over 400 
-df[df$status=='no swim' & df$ecoli < 200, ]
-df[df$status=='no swim' & df$ecoli < 200 & !df$rain, ]

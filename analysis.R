@@ -4,7 +4,7 @@ library(waffle)
 
 df <- read.csv(here('data', 'cleaned_data.csv'), stringsAsFactors = F)
 df$date <- as.Date(df$date, "%Y-%m-%d")
-df$DOY <- as.Date(df$date, "%Y-%m-%d")
+df$DOY <- as.Date(df$DOY, "%Y-%m-%d")
 df$status <- factor(df$status, levels = c('no swim', 'swim', 'closed'))
 df$beach <- factor(df$beach, levels = c("BRT", "WBO", "PEB", "MNY",  "PRB"))
 #=============================================================================
@@ -65,17 +65,28 @@ multistack.bar <- function(x=list(x), betweenspace = 2, withinspace=0, ...){
 
 # histograms
 dev.new()
-par(mfrow=c(2,2))
-hist(log10(df$ecoli[df$beach=='BRT']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='WBO']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='MNY']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='PRB']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
-hist(log10(df$ecoli[df$beach=='PEB']), breaks = seq(0.9, 3, .1)); abline(v=log10(200))
+par(mfrow=c(2,3))
+dens = list()
+for (beach in unique(df$beach)){
+  dat <- log10(df$ecoli[df$beach == beach])
+  h <- hist(dat, breaks = seq(0.9, 3, .1),plot=F)
+  h$counts <- h$counts / sum(h$counts)
+  plot(h, main=name.beach(beach), 
+       xlab='E. Coli count', xaxt='n', 
+       ylab='', las=1, ylim=c(0, 0.15))
+  abline(v=log10(200), col='red')
+  dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
+  axis(side = 1, at = 1:3, labels=parse(text=paste0("10^", 1:3)))
+}
+hist(df$ecoli, plot = F)
 
 # basic stats
 by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T)
 by(data = df$ecoli, INDICES = df$beach, FUN = mean, na.rm=T)
 by(data = df$ecoli, INDICES = df$beach, FUN = sd, na.rm=T)
+
+
+
 
 # when is single value over 400 
 df[df$status=='no swim' & df$ecoli < 200, ]
@@ -152,3 +163,22 @@ lapply(seq_along(yrlist), function(x) text(2.5 + 6*(x-1), 75, yrlist[x]))
 par(mar=c(0,0,0,0))
 plot.new()
 legend('center', legend=levels(df$status), ncol = 3, fill=cols)       
+
+smry <- acast(data = df, formula = beach~status, fun.aggregate = length, drop=F)
+round(100*(smry[,c('no swim')] / apply(smry, 1, sum)), 0)
+
+
+
+
+#### actual day-of
+#df$dayof <- 0
+dayof <- data.frame(date=df$date-1, beach=df$beach, dayof=df$ecoli)
+df <- merge(df, dayof)
+# if you go swimming on a swim day, what is mean E. Coli?
+round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='dayof')[,-3], 0)
+round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='ecoli')[,-3], 0)
+
+# if you go swimming on a swim day, what is the chance the beach *should* be closed
+acast(data = df, formula = beach~status, 
+      fun.aggregate = function(x) sum(x>200), 
+      drop=F, value.var='ecoli')[,-3]

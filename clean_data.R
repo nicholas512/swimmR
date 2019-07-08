@@ -30,9 +30,15 @@ w17 <- read.xlsx(datafile, sheet=4)
 w16 <- read.xlsx(datafile, sheet=5)
 w15 <- read.xlsx(datafile, sheet=6)
 w14 <- read.xlsx(datafile, sheet=7)
+names(w14) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+names(w15) <- c("date", "BRT", "BRT_stat", "MNY", "MNY_stat", "WBO", "WBO_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+names(w16) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+names(w17) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+names(w18) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+names(w19) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
 
 raw <- rbind(w19,w18,w17, w16,w15,w14)
-names(raw) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
+#names(raw) <- c("date", "BRT", "BRT_stat", "WBO", "WBO_stat", "MNY", "MNY_stat", "PEB", "PEB_stat", "PRB", "PRB_stat")
 raw$date <- convertToDate(raw$date)
 
 

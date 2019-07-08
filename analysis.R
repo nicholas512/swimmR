@@ -66,7 +66,7 @@ multistack.bar <- function(x=list(x), betweenspace = 2, withinspace=0, ...){
 # histograms
 dev.new()
 par(mfrow=c(2,3))
-dens = list()
+#dens = list()
 for (beach in unique(df$beach)){
   dat <- log10(df$ecoli[df$beach == beach])
   h <- hist(dat, breaks = seq(0.9, 3, .1),plot=F)
@@ -75,10 +75,10 @@ for (beach in unique(df$beach)){
        xlab='E. Coli count', xaxt='n', 
        ylab='', las=1, ylim=c(0, 0.15))
   abline(v=log10(200), col='red')
-  dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
+  #dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
   axis(side = 1, at = 1:3, labels=parse(text=paste0("10^", 1:3)))
 }
-hist(df$ecoli, plot = F)
+
 
 # basic stats
 by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T)

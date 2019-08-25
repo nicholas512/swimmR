@@ -1,2 +1,3 @@
-# swimmR
-Analysis of ottawa
+---
+permalink: /output.html
+---

@@ -1,8 +1,9 @@
 library(lubridate)
 library(here)
 library(waffle)
+library(reshape2)
 
-df <- read.csv(here('data', 'cleaned_data.csv'), stringsAsFactors = F)
+df <- read.csv(here::here('data', 'cleaned_data.csv'), stringsAsFactors = F)
 df$date <- as.Date(df$date, "%Y-%m-%d")
 df$DOY <- as.Date(df$DOY, "%Y-%m-%d")
 df$status <- factor(df$status, levels = c('no swim', 'swim', 'closed'))
@@ -81,10 +82,11 @@ for (beach in unique(df$beach)){
 
 
 # basic stats
-by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T)
-by(data = df$ecoli, INDICES = df$beach, FUN = mean, na.rm=T)
-by(data = df$ecoli, INDICES = df$beach, FUN = sd, na.rm=T)
-
+data.frame(
+median = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T))),1),
+mean = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = mean, na.rm=T))),1),
+sd = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = sd, na.rm=T))),1)
+)
 
 
 
@@ -175,10 +177,15 @@ round(100*(smry[,c('no swim')] / apply(smry, 1, sum)), 0)
 dayof <- data.frame(date=df$date-1, beach=df$beach, dayof=df$ecoli)
 df <- merge(df, dayof)
 # if you go swimming on a swim day, what is mean E. Coli?
-round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='dayof')[,-3], 0)
-round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='ecoli')[,-3], 0)
+round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='dayof')[,-1], 0)
+round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='ecoli')[,-1], 0)
 
 # if you go swimming on a swim day, what is the chance the beach *should* be closed
 acast(data = df, formula = beach~status, 
       fun.aggregate = function(x) sum(x>200), 
       drop=F, value.var='ecoli')[,-3]
+
+
+
+y <- as.numeric(rbind(by(df$ecoli[df$beach=="WBO"], df$DOY[df$beach=="WBO"], mean)))
+plot(unique(df$DOY[df$beach=="WBO"]), y)

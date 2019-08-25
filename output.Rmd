@@ -1,28 +1,263 @@
 ---
-title: "Ottawa beach quality"
+title: "Beach water quality in Ottawa, 2014-2019"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(here)
+library(lubridate)
+library(leaflet)
+library(dplyr)
+library(reshape2)
+library(knitr)
+library(kableExtra)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r helperfunctions, include=FALSE}
+#=============================================================================
+#= Helpers
+#===========
+col.yr <- function(yr){
+  switch(as.character(yr),
+         '2014'='black',
+         '2015'='red',
+         '2016'='blue',
+         '2017'='green',
+         '2018'='grey',
+         '2019'='orange')
+} 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+col.beach <- function(yr){
+  switch(as.character(yr),
+         'WBO'='black',
+         'BRT'='red',
+         'PEB'='blue',
+         'PRB'='green',
+         'MNY'='grey')
+}  
+
+name.beach <- function(beachcode){
+  switch(beachcode, 'WBO'='Westboro',
+          'BRT'='Britannia',
+          'PEB'='Petrie East Bay',
+          'PRB'='Petrie River Beaches',
+          'MNY'="Mooney's")
+}
+
+multistack.bar <- function(x=list(x), betweenspace = 2, withinspace=0, ...){
+  # note that number of rows in each component matrix of the list
+  # should be equal
+  # if you have missing value use "NA", to make it complete 
+  # number of column can differ
+  #https://stackoverflow.com/questions/32997632/grouped-and-stacked-barplot-using-base-r
+  mylist <- x
+  space = list()
+  space[[1]] <- c(rep(withinspace,ncol(mylist[[1]] )),betweenspace ) 
+  
+  for ( i in 2:length(mylist)){
+    if(i == length(mylist)){
+      space[[i]] <- c(rep(withinspace,ncol(mylist[[i]] )-1)) 
+    } else{
+      space[[i]] <- c(rep(withinspace,ncol(mylist[[i]] )-1),betweenspace ) 
+    }
+  }
+  un.space <- c(unlist(space))
+  newdata <- do.call("cbind", mylist)
+  barplot(newdata, space= un.space,  ...)
+}
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r loaddata, include=FALSE}
+df <- read.csv(here::here('data', 'cleaned_data.csv'), stringsAsFactors = F)
+df$date <- as.Date(df$date, "%Y-%m-%d")
+df$DOY <- as.Date(df$DOY, "%Y-%m-%d")
+df$status <- factor(df$status, levels = c('no swim', 'swim', 'closed'))
+df$beach <- factor(df$beach, levels = c("BRT", "WBO", "PEB", "MNY",  "PRB"))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+One of the nicest things to do on a hot day in the summer is to go for a swim. 
+Ottawa is lucky enough to have a number of beaches to choose from, but I keep
+hearing people complain about how one beach or another is gross
+or I'll read opinions online like "Don't swim at Mooneys, most of the year bacteria levels are beyond 'safe' levels and swimming is not recommended, I very rarely ever see people swimming there."
+
+Mooney's Bay in particular seems to get a bad reputation. But in a place like Ottawa
+where anything remotely unsafe gets shut down, I find it hard to believe that the 
+city would consider sanctioning these beaches unless they were legitimately safe.
+
+Fortunately, there are [water quality records available from the city](http://data.ottawa.ca/en/dataset/beach-water-sampling-data) that might 
+shed some light on whether Mooney's bay deserves all the trash talk. Note that the historic data don't seem to be available anymore, but when I downloaded them earlier this summer, records since 2014 were available. Since I'll be using these data, they're on the github for this project.
+
+Before getting into the data, here's a map of the beaches in question. I used the 
+following abbreviations to keep things simple:
+Britiannia (BRT)
+Westboro (WBO)
+Mooney's Bay (MNY)
+Petrie East Beaches (PEB)
+Petrie River Beaches (PRB)
+
+
+```{r beach, echo=FALSE}
+crds <- read.csv(here::here('data', 'coordinates.csv'))
+m <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addMarkers(lng=-crds$lng, lat=crds$lat, popup=crds$id)
+m
+
+```
+
+### Water quality data
+
+Beaches are sampled 5 times each day to measure e.coli counts. According to the [Ottawa Public Health Website](http://www.ottawapublichealth.ca/en/public-health-services/beach-water-quality-results.aspx)
+a no-swim advisory will be issued if:
+
+* the geometric mean of 5 water samples taken on the previous day is greater than 200 E. coli per 100mL of water; or
+* a single water sample test result from the previous day is greater than 400 E. coli per 100mL ; or
+* there is a significant rainfall event. 
+
+It is important to note that since samples take 18 hours to process, 
+you're relying on the data from the previous day. 
+
+### Analysis
+
+After downloading 6 years of water quality data and cleaning it up in R, I wanted 
+to see if there was any pattern in the frequency of no swim advisories across
+each of the beaches.
+
+
+```{r stackedbar_dataprepare, include=FALSE, echo=FALSE}
+
+yrlist <- unique(year(df$date))
+cols <- c('red', 'lightblue', 'grey40'  )
+L <- lapply(yrlist, function(x) acast(data = df[year(df$date)==x,], formula = status~beach, fun.aggregate = length, drop=F))
+names(L) <- yrlist
+
+smry <- acast(data = df, formula = beach~status, fun.aggregate = length, drop=F)
+
+```
+
+
+```{r stackedbar, echo=FALSE}
+## stacked bar
+m = c(rep(1,5),2)
+layout(m)
+par(mar=c(0, 4.1, 4.1, 2.1))
+multistack.bar(L, betweenspace = 1, las=2, col=cols,
+               ylim=c(0, 80), ylab='Days')
+sink <- lapply(seq_along(yrlist), function(x) text(2.5 + 6*(x-1), 75, yrlist[x]))
+#par(xpd=NULL)
+par(mar=c(0,0,0,0))
+plot.new()
+legend('bottom', legend=levels(df$status), ncol = 3, fill=cols)       
+
+
+```
+
+Britannia emerges here as a clear winner here. This is consistent with what I've heard
+people say, and makes sense since it is the furthest upstream.
+However, it looks like the water quality varies quite a lot depending on the year. There were relatively
+few closures in 2015, and 2017 was a whopper year for no swim advisories. Even Britannia 
+in 2015 had more closures than any of the other beaches in 2017. Finally, 2019 seems to be 
+a bit of an anomaly with respect to the overall pattern: Mooney's has had the fewest closures
+and Britannia has had the second most!
+
+When we look at the overall rate of closures across all years, Britannia is the lowest and
+is closed only
+9% of the time. Westboro, Petrie East and Mooney's are all closed with approximately the
+same frequency (~15%), and Petrie River Beaches is closed the most frequently (21%).
+
+```{r closure_table, echo=FALSE}
+closfreq <- round(100*(smry[,c('no swim')] / apply(smry, 1, sum)), 0)
+names(closfreq) <- sapply(names(closfreq), name.beach)
+closfreq[] <- sapply(closfreq, function(x) paste0(x,"%"))
+
+data.frame(closures=closfreq) %>%
+  kable(caption="Overall frequency of beach closures") %>%
+  kable_styling()
+```
+
+
+But how do these closure frequencies translate into e. coli counts? Looking at the 
+average values for each of the beaches, Britannia has the lowest average counts
+no matter how the average is calculated. Westboro, Petrie East and Mooney's have 
+very comparible values and their rank depends on how the average is calculated.
+Petrie River Beaches on the other hand has consistenly counts than any of the others. 
+
+```{r histo, echo=FALSE}
+par(mfrow=c(2,3))
+
+for (beach in unique(df$beach)){
+  dat <- log10(df$ecoli[df$beach == beach])
+  h <- hist(dat, breaks = seq(0.9, 3, .1),plot=F)
+  h$counts <- h$counts / sum(h$counts)
+  plot(h, main=name.beach(beach), 
+       xlab='E. Coli count', xaxt='n', 
+       ylab='Probability', las=1, ylim=c(0, 0.15))
+  abline(v=log10(200), col='red')
+  #dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
+  axis(side = 1, at = 1:3, labels=parse(text=paste0("10^", 1:3)))
+}
+```
+
+For those of you who prefer a more visual representation, the distribution of 
+e. coli counts is presented below with a red vertical line reprsenting the 
+cutoff value of 200 for a no swim advisory.
+
+```{r summarystats, echo=FALSE}
+gm_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+
+bstat <- data.frame(
+median = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = median, na.rm=T))),1),
+mean = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = mean, na.rm=T))),1),
+geometric_mean = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = gm_mean, na.rm=T))),1)#,
+#sd = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = sd, na.rm=T))),1)
+)
+rownames(bstat)<- sapply(rownames(bstat), name.beach)
+
+bstat %>%
+  kable(caption='Sumamry statistics for e.coli counts') %>%
+  kable_styling()
+```
+
+
+Finally, if the data are split up into 'swim' days and 'no swim' days it's possible
+to find the statistics of e. coli counts on days where swimming 
+is encouraged. Looking at things this way changes the rankings yet again, and
+suggests that, on average, Westboro has the highest counts on days where swimming
+is advised. Keep in mind that the average values here mask a lot of variability
+and that the differences between the beaches is probably not even statistically 
+significant.
+
+
+
+
+```{r true counts, echo=FALSE}
+dayof <- data.frame(date=df$date-1, beach=df$beach, dayof=df$ecoli)
+df <- merge(df, dayof)
+# if you go swimming on a swim day, what is mean E. Coli?
+true.count <- round(acast(data = df, formula = beach~status, fun.aggregate = mean, drop=F, value.var='dayof')[,-1], 0)
+true.sd <- round(acast(data = df, formula = beach~status, fun.aggregate = sd, drop=F, value.var='dayof')[,-1], 0)
+
+#swimdays <- data.frame(mean=true.count[,2], stdev=true.sd[,2])
+out <- as.data.frame(true.count[,1])
+names(out) <- c("mean")
+out %>%
+  kable(caption='E. coli counts on swim days') %>%
+  kable_styling(full_width = F)
+```
+
+
+
+### Tl;dr
+The frequency of beach closures depends more on the year than on the beach, with some exceptions.
+Britannia is generally closed the least and has the lowest e. coli counts. 
+
+Westboro, Mooney's Bay and Petrie East are all closed slightly more frequently, 
+and have more or less the same e. coli counts.
+
+In spite of what the haters might tell you, Mooney's Bay is actually not a bad place to swim.
+

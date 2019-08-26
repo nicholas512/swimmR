@@ -34,6 +34,13 @@ w14 <- read.xlsx(datafile, sheet=7)
 
 coords <- names(w19)[grepl("Lat", names(w19))]
 beachID <- as.character(gsub("\\.", " ", sapply(coords, function(x) strsplit(x, split='\\.GM')[[1]][1])))
+
+beachID <- gsub("Britannia","Britannia (BRT)", beachID)
+beachID <- gsub("Westboro","Westboro (WBO)", beachID)
+beachID <- gsub("Mooney's","Mooney's (MNY)", beachID)
+beachID <- gsub("Petrie East Bay","Petrie East Bay (PEB)", beachID)
+beachID <- gsub("Petrie River Beaches","Petrie River Beaches (PRB)", beachID)
+
 lat <- sapply(coords, function(x) gsub(".*Lat:(.*)\\.N.*", "\\1", x))
 lat <-  gsub('[^0-9]', ' ', lat)
 lat <- gsub("^ *|(?<= ) | *$", "", lat, perl = TRUE)

@@ -11,6 +11,7 @@ library(dplyr)
 library(reshape2)
 library(knitr)
 library(kableExtra)
+library(tufte)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -80,23 +81,32 @@ df$beach <- factor(df$beach, levels = c("BRT", "WBO", "PEB", "MNY",  "PRB"))
 
 One of the nicest things to do on a hot day in the summer is to go for a swim. 
 Ottawa is lucky enough to have a number of beaches to choose from, but I keep
-hearing people complain about how one beach or another is gross
-or I'll read opinions online like "Don't swim at Mooneys, most of the year bacteria levels are beyond 'safe' levels and swimming is not recommended, I very rarely ever see people swimming there."
+hearing people complain about how one beach or another is gross. There are also 
+plenty of opinions online like this one:
 
-Mooney's Bay in particular seems to get a bad reputation. But in a place like Ottawa
-where anything remotely unsafe gets shut down, I find it hard to believe that the 
-city would consider sanctioning these beaches unless they were legitimately safe.
+>["Don't swim at Mooneys, most of the year bacteria levels are beyond 'safe' levels and swimming is not recommended, I very rarely ever see people swimming there."](https://www.reddit.com/r/ottawa/comments/6ogu2l/beach_swimming_in_ottawa/dkhqdyo?utm_source=share&utm_medium=web2x)
+>
+>`r tufte::quote_footer('/r/ottawa user')`
+
+Mooney's Bay in particular seems to get a bad reputation. But in a city
+where anything remotely unsafe gets shut down, I find it hard to believe that 
+swimming would be encouaged unless the public health risk was basically zero.
 
 Fortunately, there are [water quality records available from the city](http://data.ottawa.ca/en/dataset/beach-water-sampling-data) that might 
-shed some light on whether Mooney's bay deserves all the trash talk. Note that the historic data don't seem to be available anymore, but when I downloaded them earlier this summer, records since 2014 were available. Since I'll be using these data, they're on the github for this project.
+shed some light on whether Mooney's bay deserves all the trash talk. 
+Note that the historic data don't seem to be available anymore, 
+but when I downloaded them earlier this summer, records since 2014 were available. 
+If you're interested in the data, they're available on the
+[github repository](https://github.com/nicholas512/swimmR/tree/master/data) for this project.
 
 Before getting into the data, here's a map of the beaches in question. I used the 
 following abbreviations to keep things simple:
-Britiannia (BRT)
-Westboro (WBO)
-Mooney's Bay (MNY)
-Petrie East Beaches (PEB)
-Petrie River Beaches (PRB)
+
+* Britiannia (BRT)
+* Westboro (WBO)
+* Mooney's Bay (MNY)
+* Petrie East Beaches (PEB)
+* Petrie River Beaches (PRB)
 
 
 ```{r beach, echo=FALSE}
@@ -175,7 +185,7 @@ closfreq[] <- sapply(closfreq, function(x) paste0(x,"%"))
 
 data.frame(closures=closfreq) %>%
   kable(caption="Overall frequency of beach closures") %>%
-  kable_styling()
+  kable_styling(full_width = F)
 ```
 
 
@@ -183,27 +193,7 @@ But how do these closure frequencies translate into e. coli counts? Looking at t
 average values for each of the beaches, Britannia has the lowest average counts
 no matter how the average is calculated. Westboro, Petrie East and Mooney's have 
 very comparible values and their rank depends on how the average is calculated.
-Petrie River Beaches on the other hand has consistenly counts than any of the others. 
-
-```{r histo, echo=FALSE}
-par(mfrow=c(2,3))
-
-for (beach in unique(df$beach)){
-  dat <- log10(df$ecoli[df$beach == beach])
-  h <- hist(dat, breaks = seq(0.9, 3, .1),plot=F)
-  h$counts <- h$counts / sum(h$counts)
-  plot(h, main=name.beach(beach), 
-       xlab='E. Coli count', xaxt='n', 
-       ylab='Probability', las=1, ylim=c(0, 0.15))
-  abline(v=log10(200), col='red')
-  #dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
-  axis(side = 1, at = 1:3, labels=parse(text=paste0("10^", 1:3)))
-}
-```
-
-For those of you who prefer a more visual representation, the distribution of 
-e. coli counts is presented below with a red vertical line reprsenting the 
-cutoff value of 200 for a no swim advisory.
+Petrie River Beaches on the other hand has consistenly higher counts than any of the others. 
 
 ```{r summarystats, echo=FALSE}
 gm_mean = function(x, na.rm=TRUE){
@@ -219,8 +209,30 @@ geometric_mean = round(t(rbind(by(data = df$ecoli, INDICES = df$beach, FUN = gm_
 rownames(bstat)<- sapply(rownames(bstat), name.beach)
 
 bstat %>%
-  kable(caption='Sumamry statistics for e.coli counts') %>%
-  kable_styling()
+  kable(caption='Summary statistics for e. coli counts') %>%
+  kable_styling(full_width = F)
+```
+
+
+For those of you who prefer a more visual representation, the distribution of 
+e. coli counts is presented below with a red vertical line reprsenting the 
+cutoff value of 200 for a no swim advisory.
+
+
+```{r histo, echo=FALSE}
+par(mfrow=c(2,3))
+
+for (beach in unique(df$beach)){
+  dat <- log10(df$ecoli[df$beach == beach])
+  h <- hist(dat, breaks = seq(0.9, 3, .1),plot=F)
+  h$counts <- h$counts / sum(h$counts)
+  plot(h, main=name.beach(beach), 
+       xlab='E. Coli count', xaxt='n', 
+       ylab='Probability', las=1, ylim=c(0, 0.15))
+  abline(v=log10(200), col='red')
+  #dens[[beach]] <- density(dat, na.rm=T, bw = 0.15)
+  axis(side = 1, at = 1:3, labels=parse(text=paste0("10^", 1:3)))
+}
 ```
 
 
